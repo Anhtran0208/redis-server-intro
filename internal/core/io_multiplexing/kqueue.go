@@ -1,0 +1,51 @@
+package io_multiplexing
+
+import (
+	"log"
+	"syscall"
+
+	"github.com/Anhtran0208/redis-server-intro/internal/config"
+)
+
+type KQueue struct {
+	fd            int
+	kqEvents      []syscall.Kevent_t
+	genericEvents []Event
+}
+
+func CreateIOMultiplexer() (*KQueue, error) {
+	kqFD, err := syscall.Kqueue()
+	if err != nil {
+		log.Fatal(err)
+		return nil, err
+	}
+	return &KQueue{
+		fd:            kqFD,
+		kqEvents:      make([]syscall.Kevent_t, config.MaxConnection),
+		genericEvents: make([]Event, config.MaxConnection),
+	}, nil
+}
+
+func (kq *KQueue) Monitor(event Event) error {
+	// register a file id to kq
+	kqEvent := event.convertToKqEvent(syscall.EV_ADD)
+	// Add event.Fd to the monitoring list of kq.fd
+	_, err := syscall.Kevent(kq.fd, []syscall.Kevent_t{kqEvent}, nil, nil)
+	return err
+}
+
+func (kq *KQueue) Wait() ([]Event, error) {
+	n, err := syscall.Kevent(kq.fd, nil, kq.kqEvents, nil)
+	if err != nil {
+		return nil, err
+	}
+	for i := 0; i < n; i++ {
+		kq.genericEvents[i] = convertKqToEvent(kq.kqEvents[i])
+	}
+
+	return kq.genericEvents[:n], nil
+}
+
+func (kq *KQueue) Close() error {
+	return syscall.Close(kq.fd)
+}
