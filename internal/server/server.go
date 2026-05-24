@@ -5,8 +5,10 @@ import (
 	"log"
 	"net"
 	"syscall"
+	"time"
 
 	"github.com/Anhtran0208/redis-server-intro/internal/config"
+	"github.com/Anhtran0208/redis-server-intro/internal/constant"
 	"github.com/Anhtran0208/redis-server-intro/internal/core"
 	"github.com/Anhtran0208/redis-server-intro/internal/core/io_multiplexing"
 )
@@ -48,7 +50,12 @@ func RunIOMultiplexingServer() {
 	}
 
 	var events = make([]io_multiplexing.Event, config.MaxConnection)
+	var lastActiveExpireExecTime = time.Now()
 	for {
+		if time.Now().After(lastActiveExpireExecTime.Add(constant.ActiveExpireFrequency)) {
+			core.ActiveDeleteExpiredKeys()
+			lastActiveExpireExecTime = time.Now()
+		}
 		// wait for file descriptor in the monitor list to be ready
 		events, err = ioMultiplexer.Wait()
 		if err != nil {

@@ -5,11 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/Anhtran0208/redis-server-intro/internal/constant"
 )
 
 const CRLF string = "\r\n"
-
-var RespNil = []byte("$-1\r\n")
 
 // encode strng
 func encodeString(s string) []byte {
@@ -60,7 +60,7 @@ func Encode(value interface{}, isSimpleString bool) []byte {
 		}
 		return []byte(fmt.Sprintf("*%d\r\n%s", len(value.([]interface{})), buf.Bytes()))
 	default:
-		return RespNil
+		return constant.RespNil
 	}
 }
 

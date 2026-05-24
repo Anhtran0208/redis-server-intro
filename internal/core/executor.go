@@ -3,7 +3,11 @@ package core
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"syscall"
+	"time"
+
+	"github.com/Anhtran0208/redis-server-intro/internal/constant"
 )
 
 func cmdPing(args []string) []byte {
@@ -20,11 +24,80 @@ func cmdPing(args []string) []byte {
 	return res
 }
 
+func cmdSet(args []string) []byte {
+	if len(args) < 2 || len(args) == 3 || len(args) > 4 {
+		return Encode(errors.New("(error) ERR wrong number of arguments for 'SET' command"), false)
+	}
+
+	var key, value string
+	var ttlMs int64 = -1
+
+	key, value = args[0], args[1]
+	if len(args) > 2 {
+		ttlSec, err := strconv.ParseInt(args[3], 10, 64)
+		if err != nil {
+			return Encode(errors.New("(error) ERR value is not an integer or out of range"), false)
+		}
+		ttlMs = ttlSec * 1000
+	}
+	dictStore.Set(key, dictStore.NewObj(key, value, ttlMs))
+	return constant.RespOk
+}
+
+func cmdGet(args []string) []byte {
+	if len(args) != 1 {
+		return Encode(errors.New("(error) ERR wrong number of arguments for 'GET' command"), false)
+	}
+	key := args[0]
+	obj := dictStore.Get(key)
+	if obj == nil {
+		return constant.RespNil
+	}
+
+	if dictStore.HasExpired(key) {
+		return constant.RespNil
+	}
+
+	return Encode(obj.Value, false)
+}
+
+func cmdTTL(args []string) []byte {
+	if len(args) != 1 {
+		return Encode(errors.New("(error) ERR wrong number of arguments for 'TTL' command"), false)
+	}
+	key := args[0]
+	obj := dictStore.Get(key)
+	if obj == nil {
+		return constant.TtlKeyNotExist
+	}
+
+	exp, isExpirySet := dictStore.GetExpiry(key)
+	if !isExpirySet {
+		return constant.TtlKeyExistNoExpire
+	}
+
+	remainMs := exp - uint64(time.Now().UnixMilli())
+	if remainMs < 0 {
+		return constant.TtlKeyNotExist
+	}
+
+	return Encode(int64(remainMs/1000), false)
+}
+
 func ExecuteAndResponse(cmd *Command, connFd int) error {
 	var res []byte
 	switch cmd.Cmd {
 	case "PING":
 		res = cmdPing(cmd.Args)
+
+	case "GET":
+		res = cmdGet(cmd.Args)
+
+	case "SET":
+		res = cmdSet(cmd.Args)
+
+	case "TTL":
+		res = cmdTTL(cmd.Args)
 	default:
 		res = []byte(fmt.Sprintf("-CMD not found\r\n"))
 	}
