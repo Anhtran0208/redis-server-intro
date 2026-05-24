@@ -7,6 +7,7 @@ import (
 	"syscall"
 
 	"github.com/Anhtran0208/redis-server-intro/internal/config"
+	"github.com/Anhtran0208/redis-server-intro/internal/core"
 	"github.com/Anhtran0208/redis-server-intro/internal/core/io_multiplexing"
 )
 
@@ -86,24 +87,24 @@ func RunIOMultiplexingServer() {
 					log.Println("read error", err)
 					continue
 				}
-				if err = respond(cmd, events[i].FileDescriptor); err != nil {
-					log.Println("err write", err)
+				if err = core.ExecuteAndResponse(cmd, events[i].FileDescriptor); err != nil {
+					log.Println("err write:", err)
 				}
 			}
 		}
 	}
 }
 
-func readCommand(fd int) (string, error) {
+func readCommand(fd int) (*core.Command, error) {
 	var buf = make([]byte, 512)
 	n, err := syscall.Read(fd, buf)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	if n == 0 {
-		return "nil", io.EOF
+		return nil, io.EOF
 	}
-	return string(buf[:n]), nil
+	return core.ParseCmd(buf)
 }
 
 func respond(data string, fd int) error {
