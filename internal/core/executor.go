@@ -98,10 +98,21 @@ func ExecuteAndResponse(cmd *Command, connFd int) error {
 
 	case "TTL":
 		res = cmdTTL(cmd.Args)
+
+	case "SADD":
+		res = cmdSADD(cmd.Args)
+
+	case "SREM":
+		res = cmdSREM(cmd.Args)
+
+	case "SMEMBERS":
+		res = cmdSMEMBERS(cmd.Args)
+
+	case "SISMEMBER":
+		res = cmdSISMEMBER(cmd.Args)
 	default:
 		res = []byte(fmt.Sprintf("-CMD not found\r\n"))
 	}
-
 	_, err := syscall.Write(connFd, res)
 	return err
 }
