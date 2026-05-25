@@ -3,7 +3,7 @@ package data_structure
 import (
 	"math"
 
-	"github.com/twmb/murmur3"
+	"github.com/spaolacci/murmur3"
 )
 
 // Log10PointFive is a precomputed value for log10(0.5).
@@ -29,7 +29,7 @@ func CreateCMS(rows, cols uint32) *CMS {
 
 // calc hash function using murmur3 library
 func (cms *CMS) calcHash(item string, rowIdx uint32) uint32 {
-	hash := murmur3.SeedNew32(rowIdx)
+	hash := murmur3.New32WithSeed(rowIdx)
 	hash.Write([]byte(item))
 	return hash.Sum32()
 }

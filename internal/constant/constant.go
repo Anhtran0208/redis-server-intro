@@ -12,3 +12,8 @@ var ActiveExpireFrequency = 100 * time.Millisecond
 var ActiveExpireSampleSize = 20
 var ActiveExpireThreshold = 0.1
 var DefaultBPlusTreeDegree = 4
+var RespZero = []byte(":0\r\n")
+var RespOne = []byte(":1\r\n")
+
+const BfDefaultInitCapacity = 100
+const BfDefaultErrRate = 0.01
