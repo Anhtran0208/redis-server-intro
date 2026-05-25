@@ -87,38 +87,43 @@ func cmdTTL(args []string) []byte {
 func ExecuteAndResponse(cmd *Command, connFd int) error {
 	var res []byte
 	switch cmd.Cmd {
+	// ping, get, set, ttl
 	case "PING":
 		res = cmdPing(cmd.Args)
-
 	case "GET":
 		res = cmdGet(cmd.Args)
-
 	case "SET":
 		res = cmdSet(cmd.Args)
-
 	case "TTL":
 		res = cmdTTL(cmd.Args)
 
+	// simple set
 	case "SADD":
 		res = cmdSADD(cmd.Args)
-
 	case "SREM":
 		res = cmdSREM(cmd.Args)
-
 	case "SMEMBERS":
 		res = cmdSMEMBERS(cmd.Args)
-
 	case "SISMEMBER":
 		res = cmdSISMEMBER(cmd.Args)
 
+	// sorted set
 	case "ZADD":
 		res = cmdZADD(cmd.Args)
-
 	case "ZSCORE":
 		res = cmdZSCORE(cmd.Args)
-
 	case "ZRANK":
 		res = cmdZRANK(cmd.Args)
+
+	// counter min sketch
+	case "CMS.INITBYDIM":
+		res = cmdCMSINITBYDIM(cmd.Args)
+	case "CMS.INITBYPROB":
+		res = cmdCMSINITBYPROB(cmd.Args)
+	case "CMS.INCRBY":
+		res = cmdCMSINCRBY(cmd.Args)
+	case "CMS.QUERY":
+		res = cmdCMSQUERY(cmd.Args)
 
 	default:
 		res = []byte(fmt.Sprintf("-CMD not found\r\n"))
