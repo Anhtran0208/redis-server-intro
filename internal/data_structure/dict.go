@@ -75,12 +75,18 @@ func (d *Dict) Get(key string) *Obj {
 }
 
 func (d *Dict) Set(key string, obj *Obj) {
+	value := d.dictStore[key]
+	if value == nil {
+		HashKeySpaceStat.Key++
+	}
 	d.dictStore[key] = obj
 }
 func (d *Dict) Delete(key string) bool {
 	if _, exist := d.dictStore[key]; exist {
 		delete(d.dictStore, key)
 		delete(d.expiredDictStore, key)
+		
+		HashKeySpaceStat.Key--
 		return true
 	}
 	return false

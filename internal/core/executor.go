@@ -1,6 +1,7 @@
 package core
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"strconv"
@@ -8,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Anhtran0208/redis-server-intro/internal/constant"
+	"github.com/Anhtran0208/redis-server-intro/internal/data_structure"
 )
 
 func cmdPing(args []string) []byte {
@@ -84,6 +86,14 @@ func cmdTTL(args []string) []byte {
 	return Encode(int64(remainMs/1000), false)
 }
 
+func cmdINFO(args []string) []byte {
+	var info []byte
+	buff := bytes.NewBuffer(info)
+	buff.WriteString("# Keyspace\r\n")
+	buff.WriteString(fmt.Sprintf("db0:keys=%d,expires=0,avg_ttl=0\r\n", data_structure.HashKeySpaceStat.Key))
+	return Encode(buff.String(), false)
+}
+
 func ExecuteAndResponse(cmd *Command, connFd int) error {
 	var res []byte
 	switch cmd.Cmd {
@@ -133,6 +143,9 @@ func ExecuteAndResponse(cmd *Command, connFd int) error {
 	case "BF.EXISTS":
 		res = cmdBFEXISTS(cmd.Args)
 
+	// info cmd
+	case "INFO":
+		res = cmdINFO(cmd.Args)
 	default:
 		res = []byte(fmt.Sprintf("-CMD not found\r\n"))
 	}
