@@ -1,7 +1,10 @@
 package data_structure
 
 import (
+	"log"
 	"time"
+
+	"github.com/Anhtran0208/redis-server-intro/internal/config"
 )
 
 type Obj struct {
@@ -75,6 +78,10 @@ func (d *Dict) Get(key string) *Obj {
 }
 
 func (d *Dict) Set(key string, obj *Obj) {
+	if len(d.dictStore) == config.MaxKeyNumber {
+		d.evict()
+	}
+
 	value := d.dictStore[key]
 	if value == nil {
 		HashKeySpaceStat.Key++
@@ -83,11 +90,31 @@ func (d *Dict) Set(key string, obj *Obj) {
 }
 func (d *Dict) Delete(key string) bool {
 	if _, exist := d.dictStore[key]; exist {
+		log.Printf("Delete key %s", key)
 		delete(d.dictStore, key)
 		delete(d.expiredDictStore, key)
-		
+
 		HashKeySpaceStat.Key--
 		return true
 	}
 	return false
+}
+
+// evict random
+func (d *Dict) evictRandom() {
+	evictCnt := int64(config.EvictionRatio * float64(config.MaxKeyNumber))
+	log.Print("trigger random eviction")
+	for key := range d.dictStore {
+		d.Delete(key)
+		evictCnt--
+		if evictCnt == 0 {
+			break
+		}
+	}
+}
+func (d *Dict) evict() {
+	switch config.EvictionPolicy {
+	case "allkeys-random":
+		d.evictRandom()
+	}
 }
