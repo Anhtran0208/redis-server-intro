@@ -125,6 +125,14 @@ func ExecuteAndResponse(cmd *Command, connFd int) error {
 	case "CMS.QUERY":
 		res = cmdCMSQUERY(cmd.Args)
 
+	// bloom filter
+	case "BF.RESERVE":
+		res = cmdBFRESERVE(cmd.Args)
+	case "BF.MADD":
+		res = cmdBFMADD(cmd.Args)
+	case "BF.EXISTS":
+		res = cmdBFEXISTS(cmd.Args)
+
 	default:
 		res = []byte(fmt.Sprintf("-CMD not found\r\n"))
 	}
