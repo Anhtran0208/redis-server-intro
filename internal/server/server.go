@@ -4,6 +4,9 @@ import (
 	"io"
 	"log"
 	"net"
+	"os"
+	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -13,9 +16,12 @@ import (
 	"github.com/Anhtran0208/redis-server-intro/internal/core/io_multiplexing"
 )
 
-func RunIOMultiplexingServer() {
+var serverStatus int32 = constant.ServerStatusIdle
+
+func RunIOMultiplexingServer(wg *sync.WaitGroup) {
+	defer wg.Done()
 	log.Println("Starting an I/O multiplexing TCP server on", config.Port)
-	// create an listener
+	// create a listener
 	listener, err := net.Listen(config.Protocol, config.Port)
 	if err != nil {
 		log.Fatal(err)
@@ -51,17 +57,31 @@ func RunIOMultiplexingServer() {
 
 	var events = make([]io_multiplexing.Event, config.MaxConnection)
 	var lastActiveExpireExecTime = time.Now()
-	for {
+	for atomic.LoadInt32(&serverStatus) != constant.ServerStatusShuttingDown {
 		if time.Now().After(lastActiveExpireExecTime.Add(constant.ActiveExpireFrequency)) {
+			// actively delete expired key
+			//idle
+			if !atomic.CompareAndSwapInt32(&serverStatus, constant.ServerStatusIdle, constant.ServerStatusBusy) {
+				if serverStatus == constant.ServerStatusShuttingDown {
+					return
+				}
+			} //busy
 			core.ActiveDeleteExpiredKeys()
+			// idle
+			atomic.SwapInt32(&serverStatus, constant.ServerStatusIdle)
 			lastActiveExpireExecTime = time.Now()
 		}
 		// wait for file descriptor in the monitor list to be ready
+		// idle
 		events, err = ioMultiplexer.Wait()
 		if err != nil {
 			continue
 		}
-
+		if !atomic.CompareAndSwapInt32(&serverStatus, constant.ServerStatusIdle, constant.ServerStatusBusy) {
+			if serverStatus == constant.ServerStatusShuttingDown {
+				return
+			}
+		} //busy
 		// handle event
 		for i := 0; i < len(events); i++ {
 			// new client trying to make connect
@@ -99,6 +119,7 @@ func RunIOMultiplexingServer() {
 				}
 			}
 		}
+		atomic.SwapInt32(&serverStatus, constant.ServerStatusIdle)
 	}
 }
 
@@ -119,4 +140,18 @@ func respond(data string, fd int) error {
 		return err
 	}
 	return nil
+}
+
+func WaitForSignal(wg *sync.WaitGroup, signals chan os.Signal) {
+	defer wg.Done()
+	<-signals
+
+	// wait for ongoing cmd to finish
+	for {
+		// compare current server status: if it's idle => shutting down
+		if atomic.CompareAndSwapInt32(&serverStatus, constant.ServerStatusIdle, constant.ServerStatusShuttingDown) {
+			log.Println("Shutting down gracefully")
+			os.Exit(0) // shut down
+		}
+	}
 }

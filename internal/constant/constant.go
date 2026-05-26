@@ -17,3 +17,7 @@ var RespOne = []byte(":1\r\n")
 
 const BfDefaultInitCapacity = 100
 const BfDefaultErrRate = 0.01
+
+const ServerStatusIdle = 1
+const ServerStatusBusy = 2
+const ServerStatusShuttingDown = 3
