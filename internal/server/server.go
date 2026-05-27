@@ -1,10 +1,12 @@
 package server
 
 import (
+	"hash/fnv"
 	"io"
 	"log"
 	"net"
 	"os"
+	"runtime"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -152,6 +154,88 @@ func WaitForSignal(wg *sync.WaitGroup, signals chan os.Signal) {
 		if atomic.CompareAndSwapInt32(&serverStatus, constant.ServerStatusIdle, constant.ServerStatusShuttingDown) {
 			log.Println("Shutting down gracefully")
 			os.Exit(0) // shut down
+		}
+	}
+}
+
+type Server struct {
+	workers       []*core.Worker
+	ioHandlers    []*IOHandler
+	numWorkers    int
+	numIOHandlers int
+	nextIOHandler int // round robin
+}
+
+func (s *Server) getParitionID(key string) int {
+	hasher := fnv.New32()
+	hasher.Write([]byte(key))
+	return int(hasher.Sum32()) % s.numWorkers
+}
+
+func (s *Server) dispatch(task *core.Task) {
+	var key string
+	if len(task.Command.Args) > 0 {
+		key = task.Command.Args[0]
+	}
+	workerID := s.getParitionID(key)
+	s.workers[workerID].TashChannel <- task
+}
+
+func NewServer() *Server {
+	numCores := runtime.NumCPU()
+	numIOHandlers := numCores / 2
+	numWorkers := numCores / 2
+	log.Printf("Initialize server with %d worker and %d ip handler\n", numWorkers, numIOHandlers)
+
+	s := &Server{
+		workers:       make([]*core.Worker, numWorkers),
+		ioHandlers:    make([]*IOHandler, numIOHandlers),
+		numWorkers:    numWorkers,
+		numIOHandlers: numIOHandlers,
+	}
+	for i := 0; i < numWorkers; i++ {
+		s.workers[i] = core.NewWorker(i, 1024)
+	}
+
+	for i := 0; i < numIOHandlers; i++ {
+		handler, err := NewIOHandler(i, s)
+		if err != nil {
+			log.Fatalf("Failed to create I/O handler %d: %v", i, err)
+		}
+		s.ioHandlers[i] = handler
+	}
+	return s
+}
+
+func (s *Server) Start(wg *sync.WaitGroup) {
+	defer wg.Done()
+	// start all IO handler
+	for _, handler := range s.ioHandlers {
+		go handler.Run()
+	}
+
+	// setup listener socket
+	listener, err := net.Listen(config.Protocol, config.Port)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer listener.Close()
+	log.Printf("Server listening on %s", config.Port)
+	for {
+		conn, err := listener.Accept()
+		if err != nil {
+			log.Printf("Failed to acccept connection: %v", err)
+			continue
+		}
+
+		// forward the new connection to an I/O handler in a round-robin manner
+		handler := s.ioHandlers[s.nextIOHandler%s.numIOHandlers]
+		s.nextIOHandler++
+
+		if err := handler.AddConn(conn); err != nil {
+			log.Printf("Failed to add connection fd to I/O handler %d: %v", handler.id, err)
+			conn.Close()
 		}
 	}
 }
