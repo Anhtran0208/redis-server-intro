@@ -6,17 +6,17 @@ import (
 	"github.com/Anhtran0208/redis-server-intro/internal/constant"
 )
 
-func ActiveDeleteExpiredKeys() {
+func (e *Executor) ActiveDeleteExpiredKeys() {
 	for {
 		var expiredCount = 0
 		var sampleCountRemain = constant.ActiveExpireSampleSize
-		for key, expiredTime := range dictStore.GetExpireDictStore() {
+		for key, expiredTime := range e.store.Dict.GetExpireDictStore() {
 			sampleCountRemain--
 			if sampleCountRemain < 0 {
 				break
 			}
 			if time.Now().UnixMilli() > int64(expiredTime) {
-				dictStore.Delete(key)
+				e.store.Dict.Delete(key)
 				expiredCount++
 			}
 		}

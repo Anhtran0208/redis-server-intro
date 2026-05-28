@@ -7,16 +7,16 @@ import (
 )
 
 // SADD cmd: add members to set
-func cmdSADD(args []string) []byte {
+func (e *Executor) cmdSADD(args []string) []byte {
 	if len(args) < 2 {
 		return Encode(errors.New("(error) ERR wrong number of arguments for 'SADD' command"), false)
 	}
 
 	key := args[0]
-	set, exist := setStore[key]
+	set, exist := e.store.Set[key]
 	if !exist {
 		set = data_structure.NewSimpleSet(key)
-		setStore[key] = set
+		e.store.Set[key] = set
 	}
 
 	cntAdded := set.Add(args[1:]...)
@@ -24,16 +24,16 @@ func cmdSADD(args []string) []byte {
 }
 
 // SREM cmd: remove members to set
-func cmdSREM(args []string) []byte {
+func (e *Executor) cmdSREM(args []string) []byte {
 	if len(args) < 2 {
 		return Encode(errors.New("(error) ERR wrong number of arguments for 'SREM' command"), false)
 	}
 
 	key := args[0]
-	set, exist := setStore[key]
+	set, exist := e.store.Set[key]
 	if !exist {
 		set = data_structure.NewSimpleSet(key)
-		setStore[key] = set
+		e.store.Set[key] = set
 	}
 
 	cntRemoved := set.Remove(args[1:]...)
@@ -41,12 +41,12 @@ func cmdSREM(args []string) []byte {
 }
 
 // SMEMBERS cmd => list all members in set
-func cmdSMEMBERS(args []string) []byte {
+func (e *Executor) cmdSMEMBERS(args []string) []byte {
 	if len(args) != 1 {
 		return Encode(errors.New("(error) ERR wrong number of arguments for 'SMEMBERS' command"), false)
 	}
 	key := args[0]
-	set, exist := setStore[key]
+	set, exist := e.store.Set[key]
 	if !exist {
 		return Encode(make([]string, 0), false)
 	}
@@ -54,13 +54,13 @@ func cmdSMEMBERS(args []string) []byte {
 }
 
 // SISMEMBER cmd => check if member is in the set
-func cmdSISMEMBER(args []string) []byte {
+func (e *Executor) cmdSISMEMBER(args []string) []byte {
 	if len(args) != 2 {
 		return Encode(errors.New("(error) ERR wrong number of arguments for 'SISMEMBER' command"), false)
 	}
 
 	key := args[0]
-	set, exist := setStore[key]
+	set, exist := e.store.Set[key]
 	if !exist {
 		return Encode(0, false)
 	}

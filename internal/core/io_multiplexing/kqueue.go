@@ -3,8 +3,6 @@ package io_multiplexing
 import (
 	"log"
 	"syscall"
-
-	"github.com/Anhtran0208/redis-server-intro/internal/config"
 )
 
 type KQueue struct {
@@ -13,7 +11,7 @@ type KQueue struct {
 	genericEvents []Event
 }
 
-func CreateIOMultiplexer() (*KQueue, error) {
+func CreateIOMultiplexer(maxEvent int) (*KQueue, error) {
 	kqFD, err := syscall.Kqueue()
 	if err != nil {
 		log.Fatal(err)
@@ -21,8 +19,8 @@ func CreateIOMultiplexer() (*KQueue, error) {
 	}
 	return &KQueue{
 		fd:            kqFD,
-		kqEvents:      make([]syscall.Kevent_t, config.MaxConnection),
-		genericEvents: make([]Event, config.MaxConnection),
+		kqEvents:      make([]syscall.Kevent_t, maxEvent),
+		genericEvents: make([]Event, maxEvent),
 	}, nil
 }
 
