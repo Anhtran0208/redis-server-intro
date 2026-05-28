@@ -35,9 +35,10 @@ func (e *Executor) cmdZADD(args []string) []byte {
 			return Encode(errors.New("(error) Score must be floating point number"), false)
 		}
 		ret := zset.Add(score, member)
-		if ret == 1 {
-			count++
+		if ret != 1 {
+			return Encode(errors.New("error when adding element"), false)
 		}
+		count++
 	}
 	return Encode(count, false)
 }
