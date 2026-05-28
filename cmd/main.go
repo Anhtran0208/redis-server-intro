@@ -23,17 +23,23 @@ func main() {
 	wg.Add(2)
 
 	switch cfg.Mode {
-	// single thread mode - mode=single-thread
+	// single thread mode --mode=single-thread
 	case config.SingleThreadMode:
 		log.Printf("Starting server in single thread mode on %s", cfg.Port)
 		go server.RunSingleThreadServer(&wg, cfg)
 
+	// multi thread mode --mode=multi-thread
+	case config.MultiThreadMode:
+		multiThreadServer, err := server.NewMultiThreadServer(cfg)
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Printf("Starting server in multi thread mode on %s", cfg.Port)
+		multiThreadServer.RunMultiThreadServer(&wg)
+
 	default:
 		log.Fatalf("Unsupported execution mode: %s", cfg.Mode)
 	}
-	//s := server.NewServer()
-	// go s.Start(&wg) // single listener
-	//go s.StartMultiListeners(&wg) // multi listener
 	go server.WaitForSignal(&wg, signals)
 	wg.Wait()
 }
