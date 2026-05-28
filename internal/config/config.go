@@ -30,7 +30,7 @@ type Config struct {
 }
 
 func Load() (*Config, error) {
-	mode := flag.String("mode", "multi", "execution mode: single or multi")
+	mode := flag.String("mode", "multi-thread", "execution mode: single-thread or multi-thread")
 	port := flag.String("port", "3000", "server port")
 	protocol := flag.String("protocol", "tcp", "network protocol")
 

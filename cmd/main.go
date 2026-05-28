@@ -35,7 +35,7 @@ func main() {
 			log.Fatal(err)
 		}
 		log.Printf("Starting server in multi thread mode on %s", cfg.Port)
-		multiThreadServer.RunMultiThreadServer(&wg)
+		go multiThreadServer.RunMultiThreadServer(&wg)
 
 	default:
 		log.Fatalf("Unsupported execution mode: %s", cfg.Mode)
