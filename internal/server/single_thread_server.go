@@ -130,9 +130,6 @@ func RunSingleThreadServer(wg *sync.WaitGroup, cfg *config.Config) {
 				}
 
 				// execute cmd
-				//if err = core.ExecuteAndResponse(cmd, events[i].FileDescriptor); err != nil {
-				//	log.Println("Error write", err)
-				//}
 				res := executor.ExecuteCMD(cmd)
 				_, err = syscall.Write(events[i].FileDescriptor, res)
 				if err != nil {
