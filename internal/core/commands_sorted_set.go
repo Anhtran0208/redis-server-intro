@@ -9,7 +9,7 @@ import (
 	"github.com/Anhtran0208/redis-server-intro/internal/data_structure"
 )
 
-func cmdZADD(args []string) []byte {
+func (e *Executor) cmdZADD(args []string) []byte {
 	if len(args) < 3 {
 		return Encode(errors.New("(error) ERR wrong number of arguments for 'ZADD' command"), false)
 	}
@@ -21,10 +21,10 @@ func cmdZADD(args []string) []byte {
 		return Encode(errors.New(fmt.Sprintf("(error) Wrong number of (score, member) arg: %d", numScoreEleArgs)), false)
 	}
 
-	zset, exist := zsetStore[key]
+	zset, exist := e.store.ZSet[key]
 	if !exist {
 		zset = data_structure.NewSortedSet(constant.DefaultBPlusTreeDegree)
-		zsetStore[key] = zset
+		e.store.ZSet[key] = zset
 	}
 
 	count := 0
@@ -43,12 +43,12 @@ func cmdZADD(args []string) []byte {
 	return Encode(count, false)
 }
 
-func cmdZSCORE(args []string) []byte {
+func (e *Executor) cmdZSCORE(args []string) []byte {
 	if len(args) != 2 {
 		return Encode(errors.New("(error) ERR wrong number of arguments for 'ZSCORE' command"), false)
 	}
 	key, member := args[0], args[1]
-	zset, exist := zsetStore[key]
+	zset, exist := e.store.ZSet[key]
 	if !exist {
 		return constant.RespNil
 	}
@@ -59,12 +59,12 @@ func cmdZSCORE(args []string) []byte {
 	return Encode(fmt.Sprintf("%f", score), false)
 }
 
-func cmdZRANK(args []string) []byte {
+func (e *Executor) cmdZRANK(args []string) []byte {
 	if len(args) != 2 {
 		return Encode(errors.New("(error) ERR wrong number of arguments for 'ZRANK' command"), false)
 	}
 	key, member := args[0], args[1]
-	zset, exist := zsetStore[key]
+	zset, exist := e.store.ZSet[key]
 	if !exist {
 		return constant.RespNil
 	}

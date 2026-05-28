@@ -5,12 +5,21 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
-	"syscall"
 	"time"
 
 	"github.com/Anhtran0208/redis-server-intro/internal/constant"
 	"github.com/Anhtran0208/redis-server-intro/internal/data_structure"
 )
+
+type Executor struct {
+	store *Store
+}
+
+func NewExecutor(store *Store) *Executor {
+	return &Executor{
+		store: store,
+	}
+}
 
 func cmdPing(args []string) []byte {
 	var res []byte
@@ -18,7 +27,7 @@ func cmdPing(args []string) []byte {
 		return Encode(errors.New("ERR wrong number of argument for 'ping' command"), false)
 	}
 	// simulation
-	time.Sleep(20 * time.Second)
+	//time.Sleep(20 * time.Second)
 	if len(args) == 0 {
 		res = Encode("PONG", true)
 	} else {
@@ -27,7 +36,7 @@ func cmdPing(args []string) []byte {
 	return res
 }
 
-func cmdSet(args []string) []byte {
+func (e *Executor) cmdSet(args []string) []byte {
 	if len(args) < 2 || len(args) == 3 || len(args) > 4 {
 		return Encode(errors.New("(error) ERR wrong number of arguments for 'SET' command"), false)
 	}
@@ -43,38 +52,38 @@ func cmdSet(args []string) []byte {
 		}
 		ttlMs = ttlSec * 1000
 	}
-	dictStore.Set(key, dictStore.NewObj(key, value, ttlMs))
+	e.store.Dict.Set(key, e.store.Dict.NewObj(key, value, ttlMs))
 	return constant.RespOk
 }
 
-func cmdGet(args []string) []byte {
+func (e *Executor) cmdGet(args []string) []byte {
 	if len(args) != 1 {
 		return Encode(errors.New("(error) ERR wrong number of arguments for 'GET' command"), false)
 	}
 	key := args[0]
-	obj := dictStore.Get(key)
+	obj := e.store.Dict.Get(key)
 	if obj == nil {
 		return constant.RespNil
 	}
 
-	if dictStore.HasExpired(key) {
+	if e.store.Dict.HasExpired(key) {
 		return constant.RespNil
 	}
 
 	return Encode(obj.Value, false)
 }
 
-func cmdTTL(args []string) []byte {
+func (e *Executor) cmdTTL(args []string) []byte {
 	if len(args) != 1 {
 		return Encode(errors.New("(error) ERR wrong number of arguments for 'TTL' command"), false)
 	}
 	key := args[0]
-	obj := dictStore.Get(key)
+	obj := e.store.Dict.Get(key)
 	if obj == nil {
 		return constant.TtlKeyNotExist
 	}
 
-	exp, isExpirySet := dictStore.GetExpiry(key)
+	exp, isExpirySet := e.store.Dict.GetExpiry(key)
 	if !isExpirySet {
 		return constant.TtlKeyExistNoExpire
 	}
@@ -95,61 +104,58 @@ func cmdINFO(args []string) []byte {
 	return Encode(buff.String(), false)
 }
 
-func ExecuteAndResponse(cmd *Command, connFd int) error {
-	var res []byte
+func (e *Executor) ExecuteCMD(cmd *Command) []byte {
 	switch cmd.Cmd {
 	// ping, get, set, ttl
 	case "PING":
-		res = cmdPing(cmd.Args)
+		return cmdPing(cmd.Args)
 	case "GET":
-		res = cmdGet(cmd.Args)
+		return e.cmdGet(cmd.Args)
 	case "SET":
-		res = cmdSet(cmd.Args)
+		return e.cmdSet(cmd.Args)
 	case "TTL":
-		res = cmdTTL(cmd.Args)
+		return e.cmdTTL(cmd.Args)
 
 	// simple set
 	case "SADD":
-		res = cmdSADD(cmd.Args)
+		return e.cmdSADD(cmd.Args)
 	case "SREM":
-		res = cmdSREM(cmd.Args)
+		return e.cmdSREM(cmd.Args)
 	case "SMEMBERS":
-		res = cmdSMEMBERS(cmd.Args)
+		return e.cmdSMEMBERS(cmd.Args)
 	case "SISMEMBER":
-		res = cmdSISMEMBER(cmd.Args)
+		return e.cmdSISMEMBER(cmd.Args)
 
 	// sorted set
 	case "ZADD":
-		res = cmdZADD(cmd.Args)
+		return e.cmdZADD(cmd.Args)
 	case "ZSCORE":
-		res = cmdZSCORE(cmd.Args)
+		return e.cmdZSCORE(cmd.Args)
 	case "ZRANK":
-		res = cmdZRANK(cmd.Args)
+		return e.cmdZRANK(cmd.Args)
 
 	// counter min sketch
 	case "CMS.INITBYDIM":
-		res = cmdCMSINITBYDIM(cmd.Args)
+		return e.cmdCMSINITBYDIM(cmd.Args)
 	case "CMS.INITBYPROB":
-		res = cmdCMSINITBYPROB(cmd.Args)
+		return e.cmdCMSINITBYPROB(cmd.Args)
 	case "CMS.INCRBY":
-		res = cmdCMSINCRBY(cmd.Args)
+		return e.cmdCMSINCRBY(cmd.Args)
 	case "CMS.QUERY":
-		res = cmdCMSQUERY(cmd.Args)
+		return e.cmdCMSQUERY(cmd.Args)
 
 	// bloom filter
 	case "BF.RESERVE":
-		res = cmdBFRESERVE(cmd.Args)
+		return e.cmdBFRESERVE(cmd.Args)
 	case "BF.MADD":
-		res = cmdBFMADD(cmd.Args)
+		return e.cmdBFMADD(cmd.Args)
 	case "BF.EXISTS":
-		res = cmdBFEXISTS(cmd.Args)
+		return e.cmdBFEXISTS(cmd.Args)
 
 	// info cmd
 	case "INFO":
-		res = cmdINFO(cmd.Args)
+		return cmdINFO(cmd.Args)
 	default:
-		res = []byte(fmt.Sprintf("-CMD not found\r\n"))
+		return []byte("-CMD not found\r\n")
 	}
-	_, err := syscall.Write(connFd, res)
-	return err
 }

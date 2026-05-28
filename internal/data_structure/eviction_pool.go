@@ -2,10 +2,11 @@ package data_structure
 
 import (
 	"sort"
-
-	"github.com/Anhtran0208/redis-server-intro/internal/config"
 )
 
+type EpoolConfig struct {
+	EpoolMaxSize int
+}
 type EvictionCandidate struct {
 	key            string
 	lastAccessTime uint32
@@ -13,6 +14,7 @@ type EvictionCandidate struct {
 
 type EvictionPool struct {
 	evictionPool []*EvictionCandidate
+	cfg          EpoolConfig
 }
 
 type ByLastAccessTime []*EvictionCandidate
@@ -52,7 +54,7 @@ func (pool *EvictionPool) Push(key string, lastAccessTime uint32) {
 	sort.Sort(ByLastAccessTime(pool.evictionPool))
 
 	// remove newest item if pool is full
-	if len(pool.evictionPool) > config.EpoolMaxSize {
+	if len(pool.evictionPool) > pool.cfg.EpoolMaxSize {
 		lastIdx := len(pool.evictionPool) - 1
 		key = pool.evictionPool[lastIdx].key
 		pool.evictionPool = pool.evictionPool[:lastIdx]
@@ -69,10 +71,9 @@ func (pool *EvictionPool) Pop() *EvictionCandidate {
 	return oldestItem
 }
 
-func newEpool(size int) *EvictionPool {
+func NewEvictionPool(cfg EpoolConfig) *EvictionPool {
 	return &EvictionPool{
-		evictionPool: make([]*EvictionCandidate, size),
+		evictionPool: make([]*EvictionCandidate, 0),
+		cfg:          cfg,
 	}
 }
-
-var ePool *EvictionPool = newEpool(0)

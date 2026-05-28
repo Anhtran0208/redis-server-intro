@@ -10,7 +10,7 @@ import (
 	"github.com/Anhtran0208/redis-server-intro/internal/data_structure"
 )
 
-func cmdCMSINITBYDIM(args []string) []byte {
+func (e *Executor) cmdCMSINITBYDIM(args []string) []byte {
 	if len(args) != 3 {
 		return Encode(errors.New("(error) ERR wrong number of arguments for 'CMS.INITBYDIM' command"), false)
 	}
@@ -27,15 +27,15 @@ func cmdCMSINITBYDIM(args []string) []byte {
 		return Encode(errors.New(fmt.Sprintf("Rows must be integer %s", args[2])), false)
 	}
 
-	_, exist := cmsStore[key]
+	_, exist := e.store.CMS[key]
 	if exist {
 		return Encode(errors.New("CMS: key already exists"), false)
 	}
-	cmsStore[key] = data_structure.CreateCMS(uint32(cols), uint32(rows))
+	e.store.CMS[key] = data_structure.CreateCMS(uint32(cols), uint32(rows))
 	return constant.RespOk
 }
 
-func cmdCMSINITBYPROB(args []string) []byte {
+func (e *Executor) cmdCMSINITBYPROB(args []string) []byte {
 	if len(args) != 3 {
 		return Encode(errors.New("(error) ERR wrong number of arguments for 'CMS.INITBYPROB' command"), false)
 	}
@@ -54,21 +54,21 @@ func cmdCMSINITBYPROB(args []string) []byte {
 	if probability >= 1 || probability <= 0 {
 		return Encode(errors.New("CMS: invalid prob value"), false)
 	}
-	_, exist := cmsStore[key]
+	_, exist := e.store.CMS[key]
 	if exist {
 		return Encode(errors.New("CMS: key already exists"), false)
 	}
 	w, h := data_structure.CalcCMSDim(errRate, probability)
-	cmsStore[key] = data_structure.CreateCMS(w, h)
+	e.store.CMS[key] = data_structure.CreateCMS(w, h)
 	return constant.RespOk
 }
 
-func cmdCMSINCRBY(args []string) []byte {
+func (e *Executor) cmdCMSINCRBY(args []string) []byte {
 	if len(args) < 3 || len(args)%2 == 0 {
 		return Encode(errors.New("(error) ERR wrong number of arguments for 'CMS.INCBY' command"), false)
 	}
 	key := args[0]
-	cms, exist := cmsStore[key]
+	cms, exist := e.store.CMS[key]
 	if !exist {
 		return Encode(errors.New("CMS: key does not exist"), false)
 	}
@@ -89,12 +89,12 @@ func cmdCMSINCRBY(args []string) []byte {
 	return Encode(res, false)
 }
 
-func cmdCMSQUERY(args []string) []byte {
+func (e *Executor) cmdCMSQUERY(args []string) []byte {
 	if len(args) < 2 {
 		return Encode(errors.New("(error) ERR wrong number of arguments for 'CMS.QUERY' command"), false)
 	}
 	key := args[0]
-	cms, exist := cmsStore[key]
+	cms, exist := e.store.CMS[key]
 	if !exist {
 		return Encode(errors.New("CMS: key does not exist"), false)
 	}

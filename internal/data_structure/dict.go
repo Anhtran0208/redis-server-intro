@@ -4,9 +4,24 @@ import (
 	"log"
 	"time"
 
-	"github.com/Anhtran0208/redis-server-intro/internal/config"
+	"github.com/Anhtran0208/redis-server-intro/internal/constant"
 )
 
+type EvictionPolicy string
+
+const (
+	NoEviction    EvictionPolicy = "noeviction"
+	AllKeysRandom EvictionPolicy = "allkeys-random"
+	AllKeysLRU    EvictionPolicy = "allkeys-lru"
+)
+
+type DictConfig struct {
+	MaxKeyNumber       int
+	EvictionRatio      float64
+	EvictionPolicy     EvictionPolicy
+	EpoolLruSampleSize int
+	EpoolMaxSize       int
+}
 type Obj struct {
 	Value          interface{}
 	LastAccessTime uint32
@@ -15,17 +30,23 @@ type Obj struct {
 type Dict struct {
 	// key => value
 	dictStore map[string]*Obj
-
 	// key => expiration time
 	expiredDictStore map[string]uint64
+	// config
+	cfg DictConfig
+	// epool for eviction
+	ePool *EvictionPool
 }
 
-func CreateDict() *Dict {
-	res := Dict{
+func CreateDict(cfg DictConfig) *Dict {
+	return &Dict{
 		dictStore:        make(map[string]*Obj),
 		expiredDictStore: make(map[string]uint64),
+		cfg:              cfg,
+		ePool: NewEvictionPool(EpoolConfig{
+			EpoolMaxSize: cfg.EpoolMaxSize,
+		}),
 	}
-	return &res
 }
 
 func (d *Dict) GetExpireDictStore() map[string]uint64 {
@@ -81,7 +102,7 @@ func (d *Dict) Get(key string) *Obj {
 }
 
 func (d *Dict) Set(key string, obj *Obj) {
-	if len(d.dictStore) == config.MaxKeyNumber {
+	if len(d.dictStore) == d.cfg.MaxKeyNumber {
 		d.evict()
 	}
 
@@ -105,7 +126,7 @@ func (d *Dict) Delete(key string) bool {
 
 // evict random
 func (d *Dict) evictRandom() {
-	evictCnt := int64(config.EvictionRatio * float64(config.MaxKeyNumber))
+	evictCnt := int64(d.cfg.EvictionRatio * float64(d.cfg.MaxKeyNumber))
 	log.Print("trigger random eviction")
 	for key := range d.dictStore {
 		d.Delete(key)
@@ -116,26 +137,30 @@ func (d *Dict) evictRandom() {
 	}
 }
 func (d *Dict) evict() {
-	switch config.EvictionPolicy {
-	case "allkeys-random":
+	switch d.cfg.EvictionPolicy {
+	case AllKeysRandom:
 		d.evictRandom()
-	case "allkeys-lru":
+	case AllKeysLRU:
 		d.evictLRU()
+	case NoEviction:
+		return
+	default:
+		return
 	}
 }
 
 // sample 5 random keys
 func (d *Dict) populateEpool() {
-	remainSampleSize := config.EpoolLruSampleSize
+	remainSampleSize := d.cfg.EpoolLruSampleSize
 	for key := range d.dictStore {
-		ePool.Push(key, d.dictStore[key].LastAccessTime)
+		d.ePool.Push(key, d.dictStore[key].LastAccessTime)
 		remainSampleSize--
 		if remainSampleSize == 0 {
 			break
 		}
 	}
 	log.Println("Epool:")
-	for _, item := range ePool.evictionPool {
+	for _, item := range d.ePool.evictionPool {
 		log.Println(item.key, item.lastAccessTime)
 	}
 }
@@ -143,12 +168,34 @@ func (d *Dict) populateEpool() {
 // evic approximate lru
 func (d *Dict) evictLRU() {
 	d.populateEpool()
-	evictCount := int64(config.EvictionRatio * float64(config.MaxKeyNumber))
+	evictCount := int64(d.cfg.EvictionRatio * float64(d.cfg.MaxKeyNumber))
 	log.Print("trigger LRU eviction")
-	for i := 0; i < int(evictCount) && len(ePool.evictionPool) > 0; i++ {
-		item := ePool.Pop()
+	for i := 0; i < int(evictCount) && len(d.ePool.evictionPool) > 0; i++ {
+		item := d.ePool.Pop()
 		if item != nil {
 			d.Delete(item.key)
+		}
+	}
+}
+
+// actively delete expired key
+func (d *Dict) ActiveDeleteExpiredKeys() {
+	for {
+		var expiredCount = 0
+		var sampleCountRemain = constant.ActiveExpireSampleSize
+		for key, expiredTime := range d.expiredDictStore {
+			sampleCountRemain--
+			if sampleCountRemain < 0 {
+				break
+			}
+			if time.Now().UnixMilli() > int64(expiredTime) {
+				d.Delete(key)
+				expiredCount++
+			}
+		}
+
+		if float64(expiredCount)/float64(constant.ActiveExpireSampleSize) <= constant.ActiveExpireThreshold {
+			break
 		}
 	}
 }
