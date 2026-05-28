@@ -1,19 +1,3 @@
-// package config
-//
-// var Protocol = "tcp"
-// var Port = ":3000"
-// var MaxConnection = 20000
-//
-// var MaxKeyNumber int = 10
-// var EvictionRatio = 0.1
-//
-// var EvictionPolicy string = "allkeys-lru"
-// var EpoolMaxSize = 16
-// var EpoolLruSampleSize = 5
-// var ListenerNumber int = 3
-//
-// var SingleThreadMode = "single-thread"
-// var MultiThreadMode = "multi-thread"
 package config
 
 import (
