@@ -30,9 +30,9 @@ A Redis-like in-memory data store built from scratch in Go, implementing the Red
 
 ### Execution Modes
 
-**Single-thread** — one event loop using kqueue/epoll to multiplex all client connections, executing commands on a single command executor.
+**Single-thread** - one event loop using kqueue/epoll to multiplex all client connections, executing commands on a single command executor.
 
-**Multi-thread** — multiple TCP listeners with `SO_REUSEPORT`, a pool of IOHandler goroutines assigned via round-robin, and key-partitioned workers that each own their own storage shard. Commands are routed to workers by FNV hashing the key, ensuring lock-free concurrent access.
+**Multi-thread** - multiple TCP listeners with `SO_REUSEPORT`, a pool of IOHandler goroutines assigned via round-robin, and key-partitioned workers that each own their own storage shard. Commands are routed to workers by FNV hashing the key, ensuring lock-free concurrent access.
 
 ---
 
@@ -67,9 +67,9 @@ Frequency estimation structure using a 2D counter array with independent Murmur3
 
 ## Memory Management
 
-- **TTL expiration** — lazy deletion on read; active cleanup loop runs every 100ms
-- **Approximate LRU eviction** — samples N random keys into an eviction pool sorted by `LastAccessTime`, evicts the oldest candidates when key count hits the configured maximum
-- **Random eviction** — evicts a configurable ratio of keys at random when the key limit is reached
+- **TTL expiration** - lazy deletion on read; active cleanup loop runs every 100ms
+- **Approximate LRU eviction** - samples N random keys into an eviction pool sorted by `LastAccessTime`, evicts the oldest candidates when key count hits the configured maximum
+- **Random eviction** - evicts a configurable ratio of keys at random when the key limit is reached
 
 ---
 
